@@ -1,0 +1,65 @@
+import sqlite3
+import time, datetime
+import os
+import RPi.GPIO as io
+
+#setup pins
+io.setmode(io.BCM)
+
+#set pins for output
+
+#Lockoff
+io.setup(22, io.OUT)
+#V1 relay
+io.setup(23, io.OUT)
+#V2 relay
+io.setup(24, io.OUT)
+#V3 relay
+io.setup(26, io.OUT)
+#V4 relay
+io.setup(27, io.OUT)
+
+#set pins for inputs from microswitches
+
+#lockoff indicator
+io.setup(16, io.IN, pull_up_down=io.PUD_DOWN)
+#input indicator
+io.setup(17, io.IN, pull_up_down=io.PUD_UP)
+#output indicator
+io.setup(18, io.IN, pull_up_down=io.PUD_DOWN)
+
+#set outputs pin position 0/1
+io.output(22, 1)
+io.output(23, 1)
+io.output(24, 1)
+io.output(26, 1)
+io.output(27, 1)
+
+if io.input(16) == 1:
+        print("got past the first check")
+        io.output(22, 0)
+        time.sleep(2)
+        if io.input(17)==1:
+                io.output(23, 0)
+                io.output(24, 0)
+                io.output(26, 0)
+                io.output(27, 0)
+                time.sleep(5)
+                if io.input(18)==1:
+                        print("TEST PASSED")
+                        io.output(23, 1)
+                        io.output(24, 1)
+                        io.output(26, 1)
+                        io.output(27, 1)
+                        time.sleep(2)
+                        io.output(22, 1)
+                        
+                else:
+                        print("i cant see an output")
+        else:
+                print("I cant see an input")
+else:
+    print("i cant see anything :(")
+
+io.cleanup()
+

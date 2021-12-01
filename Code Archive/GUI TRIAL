@@ -1,0 +1,273 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[331]:
+
+
+from tkinter import *
+from tkinter import ttk
+from tkinter import simpledialog
+#import RPi.GPIO as io 
+import os
+import time
+
+#setup pins 
+io.setmode(io.BCM) 
+
+#set pins for output
+io.setup(14,io.out)
+io.setup(15,io.out)
+io.setup(26,io.out)
+io.setup(27,io.out)
+
+#set pins for input
+io.setup(11,io.in)
+
+#set outputs pin position 0/1
+io.setup(14,1)
+io.setup(15,1)
+io.setup(26,1)
+io.setup(27,1)
+
+#set pins for input
+io.setup(27,io.in)
+
+
+#set global variables
+testGo=False
+p_in = False
+testIn={}
+hold_duration=0
+counter=0
+switchTime=0.25
+
+
+# In[332]:
+
+
+def get_input():
+    '''
+    get inputs from the entry / combo boxes
+    '''
+    hold_sec = combo_secs.get()
+    hold_min = combo_min.get()
+    hold_hrs = combo_hrs.get()
+    hold_days = combo_days.get()
+    i_max = entry_cycle.get()
+    
+    testIn={"hold_days":hold_days,"hold_hrs":hold_hrs,"hold_min":hold_min,"hold_sec":hold_sec,"i_max":i_max}
+       
+    returnData(hold_sec,hold_min,hold_hrs,hold_days,i_max,testIn)
+
+
+# In[333]:
+
+
+def returnData(hold_sec,hold_min,hold_hrs,hold_days,i_max,testIn):
+    root.destroy()
+    print(f"The will pressure hold for:{hold_days} days, {hold_hrs} hrs, {hold_min} mins & {hold_sec} secs \nthe test run cycle for {i_max} cycles.")
+    testGo=True
+    return(testIn)
+
+
+# In[334]:
+
+
+def inputCheck ():
+    """
+    check for a pressure input signal using microswitches 
+    """
+    if io.input(10)==1:
+        #energise all 4 coils
+        io.output(14,1)
+        io.output(15,1)
+        io.output(26,1)
+        io.output(27,1)
+        #wait for the hold duration
+        time.sleep(hold_duration)
+    else:
+        print("no pressure at input!")
+        testGo=False
+    
+
+
+# In[335]:
+
+
+def cycle():
+    if imax %1000 == 0:
+        inputCheck()
+        counter+=1
+    else:
+         for i in range(1,i_max,1):
+            #v1 turns off
+            io.output(14,0)
+            time.sleep(switchTime)
+            #v1 turns on
+            io.output(14,1)
+            #v2 turns off
+            io.output(15,0)
+            time.sleep(switchTime)
+            #V2 turns on
+            io.output(15,1)
+            #V3 turns off
+            io.output(26,0)
+            time.sleep(switchTime)
+            #V3 turns on
+            io.output(26,1)
+            #V4 turns off
+            io.output(27,0)
+            time.sleep(switchTime)
+            #V4 turns on 
+            io.output(27,1)
+            # add one to the counter
+            counter+=1
+
+
+# In[341]:
+
+
+def runTest(event):
+    
+    start = timer()
+    hold_duration=((hold_days*24*60*60)+(hold_hrs*60*60)+(hold_min*60)+(hold_sec))
+    i_max=+1
+    try:
+        while testGo==True:
+            inputCheck()
+            cycle()
+            
+    except KeyboardInterrupt: 
+        print(f"\n,{counter}")
+                   
+    finally:
+        #GPIO.cleanup() 
+        end = timer()
+        print(end - start)  
+
+
+# In[342]:
+
+
+def testVal(inStr,acttyp):
+    ''' 
+    Validate the entries to integers only in cycle boxes
+    '''
+    if acttyp == '1': #insert
+        if not inStr.isdigit():
+            return False
+    return True
+
+
+# In[343]:
+
+
+def welcome(event):
+    newTest.destroy()
+
+
+# In[345]:
+
+
+# open screen   
+newTest=Tk()
+newTest.title('RVM cycle testing')
+newTest.config(bg="white")
+
+title_screen=Label(newTest, text="Welcome to RVM Pressure hold and cycle testing.\n Click to begin", bg="white")
+title_screen.grid(row=0, column=0)
+button_1=Button(newTest, text="Begin", width=30)
+button_1.bind("<Button-1>",welcome)
+button_1.grid(row=1, column=0, pady=5, padx=5)
+newTest.mainloop()
+
+#def test_set():
+    
+root=Tk()
+root.geometry('500x210')
+root.title('Test Set-up')
+root.config(bg="white")
+
+
+#Title block    
+
+label_title=Label(root,text="Test Set-up",bg="white",font="arial")
+label_title.grid(row=0, columnspan=8,pady=5)
+ttk.Separator().grid(row=1,columnspan=8, sticky=EW,pady=3)
+
+# Take a duration to hold pressure using combo boxes 
+label_title1= Label(root,text="Duration to pressure hold test (1sec - 1 year)",bg="white")
+label_title1.grid(row=2, columnspan=8,pady=5)
+
+# Divider
+
+ttk.Separator().grid(row=3,columnspan=8, sticky=EW,pady=3)
+## what goes in to the combo box?
+
+tsecs=list(range(0,60,1))
+tmin=list(range(0,60,1))
+thour=list(range(0,24,1))
+tday=list(range(0,366,1))
+
+### days box
+
+label_days=Label(root,text="days:",bg="white")
+label_days.grid(row=4,column=0)
+combo_days=ttk.Combobox(root,values=tday,width=5)
+combo_days.grid(row=4,column=1,padx=3)
+#set default
+combo_days.current(0)
+
+### hours box
+
+label_hrs=Label(root,text="hrs:",bg="white")
+label_hrs.grid(row=4,column=2)
+combo_hrs=ttk.Combobox(root,values=thour,width=5)
+combo_hrs.grid(row=4,column=3,padx=3)
+#set default
+combo_hrs.current(0)
+
+### Mins box
+
+label_min=Label(root,text="mins:",bg="white")
+label_min.grid(row=4,column=4)
+combo_min=ttk.Combobox(root,values=tmin,width=5)
+combo_min.grid(row=4,column=5,padx=3)
+#set default
+combo_min.current(1)
+
+###seconds box
+
+label_secs=Label(root,text="secs:",bg="white")
+label_secs.grid(row=4,column=6)
+combo_secs=ttk.Combobox(root,values=tsecs,width=5)
+combo_secs.grid(row=4,column=7,padx=3)
+#set default
+combo_secs.current(0)
+
+# Divider
+
+ttk.Separator().grid(row=5,columnspan=8, sticky=EW,pady=5)
+
+#Take an entry for number of cycles 
+label_title2= Label(root,text="Number of Cycles:",bg="white")
+label_title2.grid(row=6,column=3,columnspan=2)
+
+
+entry_cycle=Entry(root, validate="key",width=50,justify="center",bg="grey99")
+entry_cycle.insert(END, '250000')
+entry_cycle['validatecommand'] = (entry_cycle.register(testVal),'%P','%d')
+entry_cycle.grid(row=7,column=2,columnspan=4)
+
+
+#Run Test Button
+button_2 = Button(root, text = 'Run The Test')
+button_2.grid(row=8,columnspan=8,pady=10) 
+button_2.config(command = get_input)
+button_2.bind("<Button-1>",runTest)
+
+root.mainloop()
+
+
+
+
